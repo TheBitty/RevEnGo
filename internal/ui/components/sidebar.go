@@ -1,4 +1,4 @@
-// Package components provides UI components for the RevEnGo application.
+// Package components provide UI components for the RevEnGo application.
 // This file contains the sidebar component used for navigation and organization.
 package components
 
@@ -13,7 +13,7 @@ import (
 // Each section contains a title, icon, and a list of items that can be selected.
 // Sections help organize related items into collapsible groups.
 type SidebarSection struct {
-	// Title is the display name of the section
+	// The Title is the display name of the section
 	Title string
 
 	// Icon is the visual representation of the section
@@ -133,9 +133,9 @@ func createSidebarTree(sections []SidebarSection) *widget.Tree {
 		// This function updates nodes with their specific content
 		// It sets the correct label text and icon for each node
 		func(id widget.TreeNodeID, branch bool, obj fyne.CanvasObject) {
-			container := obj.(*fyne.Container)
-			label := container.Objects[1].(*widget.Label)
-			icon := container.Objects[0].(*widget.Icon)
+			nodeContainer := obj.(*fyne.Container)
+			label := nodeContainer.Objects[1].(*widget.Label)
+			icon := nodeContainer.Objects[0].(*widget.Icon)
 
 			if branch {
 				// For branch nodes, use the section title and icon
@@ -146,6 +146,7 @@ func createSidebarTree(sections []SidebarSection) *widget.Tree {
 						return
 					}
 				}
+
 			} else {
 				// For leaf nodes, extract the item name from the ID
 				// (everything after the dot)
