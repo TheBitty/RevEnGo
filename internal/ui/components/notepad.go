@@ -6,6 +6,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/leog/RevEnGo/internal/models"
 )
 
 // NotePadData represents the data for a note in the application.
@@ -20,6 +22,13 @@ type NotePadData struct {
 
 	// Tags is a list of keywords used for categorization and searching
 	Tags []string
+
+	// RE-specific fields
+	BinaryName     string
+	FunctionRefs   []string
+	AddressRange   string
+	RelatedNotes   []string
+	ReverseEngType string
 }
 
 // NewNotePad creates a new notepad component for editing and viewing notes.
@@ -27,6 +36,7 @@ type NotePadData struct {
 // - A title field for naming the note
 // - A large content area for the main note text
 // - A tags field for categorization
+// - RE-specific fields for specialized analysis
 //
 // Returns a canvas object that can be placed in a container.
 func NewNotePad() fyne.CanvasObject {
@@ -49,20 +59,62 @@ func NewNotePad() fyne.CanvasObject {
 	// Create a label for the tags field to clearly identify its purpose
 	tagsLabel := widget.NewLabel("Tags:")
 
+	// Create RE-specific fields
+	// Note type selector
+	noteTypeSelect := widget.NewSelect([]string{
+		models.RETypeGeneral,
+		models.RETypeFunctionAnalysis,
+		models.RETypeStructureAnalysis,
+		models.RETypeProtocolAnalysis,
+		models.RETypeVulnerability,
+	}, nil)
+	noteTypeSelect.SetSelected(models.RETypeGeneral)
+
+	// Binary name entry
+	binaryNameEntry := widget.NewEntry()
+	binaryNameEntry.SetPlaceHolder("Binary Name (optional)")
+
+	// Address range entry
+	addressRangeEntry := widget.NewEntry()
+	addressRangeEntry.SetPlaceHolder("Address Range (e.g., 0x1000-0x2000)")
+
+	// Function references entry
+	functionRefsEntry := widget.NewMultiLineEntry()
+	functionRefsEntry.SetPlaceHolder("Function references (one per line)")
+	functionRefsEntry.SetMinRowsVisible(3)
+
 	// Arrange the tags label and entry field in a horizontal layout
 	tagsContainer := container.NewBorder(nil, nil, tagsLabel, nil, tagsEntry)
+
+	// Create container for RE-specific fields
+	reFieldsContainer := container.NewVBox(
+		widget.NewLabel("Note Type:"),
+		noteTypeSelect,
+		widget.NewLabel("Binary Name:"),
+		binaryNameEntry,
+		widget.NewLabel("Address Range:"),
+		addressRangeEntry,
+		widget.NewLabel("Function References:"),
+		functionRefsEntry,
+	)
+
+	// Create tabs for regular note fields and RE-specific fields
+	tabs := container.NewAppTabs(
+		container.NewTabItem("Basic Info", container.NewVBox(
+			titleEntry,
+			tagsContainer,
+		)),
+		container.NewTabItem("RE Details", reFieldsContainer),
+	)
 
 	// Create the overall notepad layout
 	// This places the title at the top, content in the center, and tags at the bottom
 	noteContainer := container.NewBorder(
-		container.NewVBox(
-			titleEntry,    // Title at the top
-			tagsContainer, // Tags below the title
-		),
+		tabs,         // Top component (tabs)
 		nil,          // No bottom component
 		nil,          // No left component
 		nil,          // No right component
-		contentEntry, // Content in the center (largest area)
+		contentEntry, // Content in the center (the largest area)
 	)
 
 	// Add padding around the notepad for visual comfort
@@ -71,19 +123,18 @@ func NewNotePad() fyne.CanvasObject {
 }
 
 // LoadNoteData loads data into the notepad component.
-// This function will be used to populate the notepad with existing note data
+// This function populates the notepad with existing note data
 // when a user selects a note to view or edit.
 //
 // Parameters:
 //   - notepad: The notepad container to load data into
 //   - data: The note data to load
 func LoadNoteData(notepad *fyne.Container, data NotePadData) {
-	// Note: Implementation will be added later
-	// This will set the title, content, and tags fields with the provided data
+	// Implementation to be completed
 }
 
 // GetNoteData retrieves data from the notepad component.
-// This function will be used to extract the current note data from the UI
+// This function extracts the current note data from the UI
 // when a user wants to save a note.
 //
 // Parameters:
@@ -92,7 +143,38 @@ func LoadNoteData(notepad *fyne.Container, data NotePadData) {
 // Returns:
 //   - The note data extracted from the notepad
 func GetNoteData(notepad *fyne.Container) NotePadData {
-	// Note: Implementation will be added later
-	// This will retrieve the title, content, and tags from the UI fields
+	// Implementation to be completed
 	return NotePadData{}
+}
+
+// ConvertToNote converts NotePadData to a models.Note.
+// This function is used when saving the current UI data to storage.
+func ConvertToNote(data NotePadData, existingID string) *models.Note {
+	note := &models.Note{
+		ID:             existingID,
+		Title:          data.Title,
+		Content:        data.Content,
+		Tags:           data.Tags,
+		BinaryName:     data.BinaryName,
+		FunctionRefs:   data.FunctionRefs,
+		AddressRange:   data.AddressRange,
+		RelatedNotes:   data.RelatedNotes,
+		ReverseEngType: data.ReverseEngType,
+	}
+	return note
+}
+
+// ConvertFromNote converts a models.Note to NotePadData.
+// This function is used when loading stored data into the UI.
+func ConvertFromNote(note *models.Note) NotePadData {
+	return NotePadData{
+		Title:          note.Title,
+		Content:        note.Content,
+		Tags:           note.Tags,
+		BinaryName:     note.BinaryName,
+		FunctionRefs:   note.FunctionRefs,
+		AddressRange:   note.AddressRange,
+		RelatedNotes:   note.RelatedNotes,
+		ReverseEngType: note.ReverseEngType,
+	}
 }

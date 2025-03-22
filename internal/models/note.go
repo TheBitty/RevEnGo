@@ -9,6 +9,15 @@ import (
 	"time"
 )
 
+// Reverse Engineering note types
+const (
+	RETypeGeneral           = "general"
+	RETypeFunctionAnalysis  = "function_analysis"
+	RETypeStructureAnalysis = "structure_analysis"
+	RETypeProtocolAnalysis  = "protocol_analysis"
+	RETypeVulnerability     = "vulnerability"
+)
+
 // Note represents a note in the application.
 // Each note contains metadata (such as title and tags) and the main content.
 // Notes can be associated with projects for organization.
@@ -35,6 +44,13 @@ type Note struct {
 	// ProjectID is an optional reference to a project that contains this note
 	// If empty, the note is not associated with any project
 	ProjectID string `json:"project_id,omitempty"`
+
+	// RE-specific fields
+	BinaryName     string   `json:"binary_name,omitempty"`
+	FunctionRefs   []string `json:"function_refs,omitempty"`
+	AddressRange   string   `json:"address_range,omitempty"`
+	RelatedNotes   []string `json:"related_notes,omitempty"`
+	ReverseEngType string   `json:"reverse_eng_type,omitempty"`
 }
 
 // NoteStore defines the interface for note storage operations.
@@ -71,7 +87,7 @@ type FileNoteStore struct {
 //   - A configured FileNoteStore instance
 //   - An error if the directory cannot be created
 func NewFileNoteStore(basePath string) (*FileNoteStore, error) {
-	// Create the storage directory if it doesn't exist
+	// Create the storage directory if it doesn't exist,
 	// This ensures we can write files immediately
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		return nil, err
@@ -98,7 +114,7 @@ func (s *FileNoteStore) SaveNote(note *Note) error {
 
 	// If it's a new note, generate an ID and set creation time
 	if note.ID == "" {
-		// Use a timestamp-based ID format (YYYYMMDDhhmmss)
+		// Use a timestamp-based ID format (YYYYMMDhhmmss)
 		note.ID = time.Now().Format("20060102150405")
 		note.Created = time.Now()
 	}
