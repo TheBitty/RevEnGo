@@ -9,14 +9,15 @@ import (
 
 	"github.com/leog/RevEnGo/internal/models"
 	"github.com/leog/RevEnGo/internal/ui"
+	"github.com/leog/RevEnGo/internal/ui/theme"
 )
 
 func main() {
 	// This is the root object that manages the application lifecycle
 	a := app.New()
 
-	// Set up the application theme
-	ui.SetupAppTheme(a)
+	// Set up custom RevEnGo theme
+	a.Settings().SetTheme(theme.New())
 
 	// Create the main application window with a title
 	w := a.NewWindow("RevEnGo")

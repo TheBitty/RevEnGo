@@ -3,13 +3,26 @@
 package components
 
 import (
+	"image/color"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/leog/RevEnGo/internal/models"
+	"github.com/leog/RevEnGo/internal/ui/widgets"
+)
+
+// Color constants for the notepad
+var (
+	terminalBgColor    = color.NRGBA{R: 8, G: 14, B: 21, A: 255}     // Dark terminal background
+	terminalTextColor  = color.NRGBA{R: 180, G: 255, B: 180, A: 255} // Terminal green text
+	codeBlockBgColor   = color.NRGBA{R: 15, G: 25, B: 35, A: 255}    // Slightly lighter for code blocks
+	tabActiveBgColor   = color.NRGBA{R: 30, G: 50, B: 70, A: 255}    // Active tab background
+	tabInactiveBgColor = color.NRGBA{R: 15, G: 30, B: 50, A: 255}    // Inactive tab background
+	accentBlue         = color.NRGBA{R: 0, G: 174, B: 239, A: 255}   // Cyber blue accent
 )
 
 // NotePadData represents the data for a note in the application.
@@ -62,24 +75,31 @@ func NewNotePad() fyne.CanvasObject {
 	components := &NotePadComponents{}
 	currentComponents = components // Store the reference globally
 
-	// Create the title entry field for the note's name
+	// Create the background
+	background := canvas.NewRectangle(terminalBgColor)
+
+	// Create the title entry field with terminal styling
 	components.TitleEntry = widget.NewEntry()
 	components.TitleEntry.SetPlaceHolder("Note Title")
+	components.TitleEntry.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
 
-	// Create the main content entry field for the note's body
-	components.ContentEntry = widget.NewMultiLineEntry()
+	// Create the main content entry field with terminal styling
+	components.ContentEntry = widgets.TerminalEntry()
 	components.ContentEntry.SetPlaceHolder("Write your analysis notes here...")
-	components.ContentEntry.SetMinRowsVisible(20) // Set a comfortable height for writing
+	components.ContentEntry.SetMinRowsVisible(20)
 
-	// Create the tags entry field for categorizing the note
+	// Create the tags entry field with terminal styling
 	components.TagsEntry = widget.NewEntry()
 	components.TagsEntry.SetPlaceHolder("Tags (comma separated)")
+	components.TagsEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
-	// Create a label for the tags field
-	tagsLabel := widget.NewLabel("Tags:")
+	// Create a label for the tags field with distinctive styling
+	tagsLabel := canvas.NewText("TAGS:", color.NRGBA{R: 0, G: 200, B: 170, A: 255})
+	tagsLabel.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+	tagsLabel.TextSize = 12
 
-	// Create RE-specific fields
-	// Note type selector
+	// Create RE-specific fields with terminal styling
+	// Note type selector with distinctive styling
 	components.NoteTypeSelect = widget.NewSelect([]string{
 		models.RETypeGeneral,
 		models.RETypeFunctionAnalysis,
@@ -89,54 +109,117 @@ func NewNotePad() fyne.CanvasObject {
 	}, nil)
 	components.NoteTypeSelect.SetSelected(models.RETypeGeneral)
 
-	// Binary name entry
+	// Binary name entry with terminal styling
 	components.BinaryNameEntry = widget.NewEntry()
 	components.BinaryNameEntry.SetPlaceHolder("Binary Name (optional)")
+	components.BinaryNameEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
-	// Address range entry
+	// Address range entry with terminal styling
 	components.AddressRangeEntry = widget.NewEntry()
 	components.AddressRangeEntry.SetPlaceHolder("Address Range (e.g., 0x1000-0x2000)")
+	components.AddressRangeEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
-	// Function references entry
+	// Function references entry with terminal styling
 	components.FunctionRefsEntry = widget.NewMultiLineEntry()
 	components.FunctionRefsEntry.SetPlaceHolder("Function references (one per line)")
 	components.FunctionRefsEntry.SetMinRowsVisible(3)
+	components.FunctionRefsEntry.TextStyle = fyne.TextStyle{Monospace: true}
+
+	// Create title container with prompt-like styling
+	titlePrompt := canvas.NewText(">> ", accentBlue)
+	titlePrompt.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+	titlePrompt.TextSize = 16
+
+	titleContainer := container.NewBorder(
+		nil, nil, titlePrompt, nil, components.TitleEntry)
 
 	// Arrange the tags label and entry field in a horizontal layout
 	tagsContainer := container.NewBorder(nil, nil, tagsLabel, nil, components.TagsEntry)
 
-	// Create container for RE-specific fields
+	// Create styled labels for RE fields
+	typeLabel := createTerminalLabel("TYPE:")
+	binaryLabel := createTerminalLabel("BINARY:")
+	addressLabel := createTerminalLabel("ADDR_RANGE:")
+	funcRefsLabel := createTerminalLabel("XREFS:")
+
+	// Create container for RE-specific fields with terminal styling
 	reFieldsContainer := container.NewVBox(
-		widget.NewLabel("Note Type:"),
-		components.NoteTypeSelect,
-		widget.NewLabel("Binary Name:"),
-		components.BinaryNameEntry,
-		widget.NewLabel("Address Range:"),
-		components.AddressRangeEntry,
-		widget.NewLabel("Function References:"),
+		container.NewBorder(nil, nil, typeLabel, nil, components.NoteTypeSelect),
+		container.NewBorder(nil, nil, binaryLabel, nil, components.BinaryNameEntry),
+		container.NewBorder(nil, nil, addressLabel, nil, components.AddressRangeEntry),
+		funcRefsLabel,
 		components.FunctionRefsEntry,
 	)
 
-	// Create tabs for regular note fields and RE-specific fields
+	// Create a code block background for the RE fields
+	reBackground := canvas.NewRectangle(codeBlockBgColor)
+	reContainer := container.NewStack(
+		reBackground,
+		container.NewPadded(reFieldsContainer),
+	)
+
+	// Create tabs for regular note fields and RE-specific fields with hex addresses
 	components.Tabs = container.NewAppTabs(
-		container.NewTabItem("Basic Info", container.NewVBox(
-			components.TitleEntry,
+		widgets.HexTabItem("01", container.NewVBox(
+			titleContainer,
 			tagsContainer,
 		)),
-		container.NewTabItem("RE Details", reFieldsContainer),
+		widgets.HexTabItem("02", reContainer),
+	)
+
+	// Style the tabs to look like memory addresses
+	components.Tabs.OnSelected = func(tab *container.TabItem) {
+		// We could add more custom tab styling logic here
+	}
+
+	// Add decorative elements to make it look like a terminal
+	// Create a terminal-style prompt for the content area
+	contentPrompt := canvas.NewText("$>", accentBlue)
+	contentPrompt.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+	contentPrompt.TextSize = 14
+
+	// Add hex address indicators to simulate memory view
+	addrIndicator := createHexAddressLabel()
+
+	// Create the content area with decorative elements
+	contentContainer := container.NewBorder(
+		container.NewHBox(contentPrompt, addrIndicator),
+		nil,
+		nil,
+		nil,
+		components.ContentEntry,
 	)
 
 	// Create the overall notepad layout
 	noteContainer := container.NewBorder(
-		components.Tabs,         // Top component (tabs)
-		nil,                     // No bottom component
-		nil,                     // No left component
-		nil,                     // No right component
-		components.ContentEntry, // Content in the center (the largest area)
+		components.Tabs,  // Top component (tabs)
+		nil,              // No bottom component
+		nil,              // No left component
+		nil,              // No right component
+		contentContainer, // Content in the center
 	)
 
-	// Add padding around the notepad for visual comfort
-	return container.NewPadded(noteContainer)
+	// Stack the background and content
+	return container.NewStack(
+		background,
+		container.NewPadded(noteContainer),
+	)
+}
+
+// createTerminalLabel creates a terminal-styled label
+func createTerminalLabel(text string) *canvas.Text {
+	label := canvas.NewText(text, accentBlue)
+	label.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
+	label.TextSize = 12
+	return label
+}
+
+// createHexAddressLabel creates a label with hexadecimal address styling
+func createHexAddressLabel() *canvas.Text {
+	label := canvas.NewText("0x00c0ffee:", terminalTextColor)
+	label.TextStyle = fyne.TextStyle{Monospace: true}
+	label.TextSize = 12
+	return label
 }
 
 // getComponents returns the current components

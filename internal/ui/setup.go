@@ -89,8 +89,3 @@ func SetupMainWindow(w fyne.Window, config AppConfig) {
 	// Load initial note list
 	noteController.RefreshNoteList()
 }
-
-// SetupAppTheme configures the application theme
-func SetupAppTheme(a fyne.App) {
-	a.Settings().SetTheme(theme.DarkTheme())
-}
