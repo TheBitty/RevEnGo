@@ -4,7 +4,9 @@ package ui
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/leog/RevEnGo/internal/models"
 	"github.com/leog/RevEnGo/internal/ui/components"
@@ -37,13 +39,19 @@ func (c *NoteController) CreateNewNote() {
 	c.currentNoteID = ""
 
 	// Clear the notepad
-	// Implementation depends on the notepad's API
+	components.ClearNotepad(c.notepad.(*fyne.Container))
 }
 
 // SaveCurrentNote saves the current content of the notepad
 func (c *NoteController) SaveCurrentNote() error {
 	// Extract data from the notepad
 	data := components.GetNoteData(c.notepad.(*fyne.Container))
+
+	// Validate data
+	if data.Title == "" {
+		dialog.ShowInformation("Missing Information", "Please provide a title for your note.", c.window)
+		return nil
+	}
 
 	// Convert to a Note model
 	note := components.ConvertToNote(data, c.currentNoteID)
@@ -59,7 +67,10 @@ func (c *NoteController) SaveCurrentNote() error {
 	c.currentNoteID = note.ID
 
 	// Refresh the sidebar
-	// Implementation depends on the sidebar's API
+	c.RefreshNoteList()
+
+	// Show success message
+	dialog.ShowInformation("Note Saved", "Your note has been saved successfully.", c.window)
 
 	return nil
 }
@@ -87,9 +98,14 @@ func (c *NoteController) LoadNote(noteID string) error {
 
 // DeleteNote deletes the current note
 func (c *NoteController) DeleteNote() error {
+	if c.currentNoteID == "" {
+		dialog.ShowInformation("No Note Selected", "Please select a note to delete.", c.window)
+		return nil
+	}
+
 	// Confirm deletion
 	dialog.ShowConfirm("Delete Note", "Are you sure you want to delete this note?", func(confirmed bool) {
-		if confirmed && c.currentNoteID != "" {
+		if confirmed {
 			// Delete the note
 			err := c.noteStore.DeleteNote(c.currentNoteID)
 			if err != nil {
@@ -101,7 +117,10 @@ func (c *NoteController) DeleteNote() error {
 			c.CreateNewNote()
 
 			// Refresh the sidebar
-			// Implementation depends on the sidebar's API
+			c.RefreshNoteList()
+
+			// Show success message
+			dialog.ShowInformation("Note Deleted", "The note has been deleted successfully.", c.window)
 		}
 	}, c.window)
 
@@ -110,6 +129,54 @@ func (c *NoteController) DeleteNote() error {
 
 // RefreshNoteList updates the sidebar with the current list of notes
 func (c *NoteController) RefreshNoteList() error {
-	// Implementation depends on the sidebar's API
+	// Get all notes
+	notes, err := c.noteStore.ListNotes()
+	if err != nil {
+		dialog.ShowError(err, c.window)
+		return err
+	}
+
+	var content fyne.CanvasObject
+
+	if len(notes) == 0 {
+		// No notes yet, show message
+		content = container.NewVBox(
+			widget.NewLabel("Your Notes"),
+			widget.NewLabel("No notes yet. Create one using the toolbar!"),
+		)
+	} else {
+		// Create a list of items for the sidebar
+		notesList := widget.NewList(
+			func() int {
+				return len(notes)
+			},
+			func() fyne.CanvasObject {
+				return widget.NewLabel("")
+			},
+			func(id widget.ListItemID, obj fyne.CanvasObject) {
+				obj.(*widget.Label).SetText(notes[id].Title)
+			},
+		)
+
+		// Set up on-selected handler
+		notesList.OnSelected = func(id widget.ListItemID) {
+			if id < len(notes) {
+				c.LoadNote(notes[id].ID)
+			}
+		}
+
+		// Wrap in a container with header
+		content = container.NewBorder(
+			widget.NewLabel("Your Notes"),
+			nil,
+			nil,
+			nil,
+			notesList,
+		)
+	}
+
+	// Update the sidebar using the component's function
+	components.UpdateNotesList(c.sidebar.(*fyne.Container), content)
+
 	return nil
 }

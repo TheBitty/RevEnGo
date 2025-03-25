@@ -26,43 +26,33 @@ type SidebarSection struct {
 // NewSidebar creates a new sidebar component for navigation.
 // The sidebar provides a hierarchical structure for organizing and accessing notes.
 // It displays sections for:
+// - Notes for accessing all notes
 // - Recent notes for quick access to recently edited items
 // - Projects for organizing related notes
 // - Tags for filtering notes by keywords
 //
 // Returns a canvas object that can be placed in a container.
 func NewSidebar() fyne.CanvasObject {
-	// Create the "Recent Notes" section
-	// This section displays recently edited notes for quick access
-	recentNotes := SidebarSection{
-		Title: "Recent Notes",
-		Icon:  theme.DocumentIcon(),
-		Items: []string{"Note 1", "Note 2", "Note 3"}, // Example items
-	}
+	// Create a simple container to hold the notes list
+	// This will be updated by the controller
+	notesListContainer := container.NewVBox(
+		widget.NewLabel("Your Notes"),
+		widget.NewLabel("No notes yet. Create one using the toolbar!"),
+	)
 
-	// Create the "Projects" section
-	// This section organizes notes by project/category
-	projects := SidebarSection{
-		Title: "Projects",
-		Icon:  theme.FolderIcon(),
-		Items: []string{"Project A", "Project B"}, // Example projects
-	}
+	// Wrap it in a padded container
+	return container.NewPadded(notesListContainer)
+}
 
-	// Create the "Tags" section
-	// This section allows filtering notes by tags
-	tags := SidebarSection{
-		Title: "Tags",
-		Icon:  theme.InfoIcon(),
-		Items: []string{"Binary", "Assembly", "Vulnerability", "Function"}, // Example tags
-	}
+// UpdateNotesList updates the notes list in the sidebar
+// This function is intended to be called by the controller when the list of notes changes
+func UpdateNotesList(sidebar *fyne.Container, notesList fyne.CanvasObject) {
+	// The sidebar is wrapped in a padded container, so we need to access the inner container
+	innerContainer := sidebar.Objects[0].(*fyne.Container)
 
-	// Create the sidebar tree widget from the defined sections
-	// The tree provides a collapsible, hierarchical view of all items
-	tree := createSidebarTree([]SidebarSection{recentNotes, projects, tags})
-
-	// Add padding around the sidebar for visual comfort
-	// This creates space between the sidebar elements and the container edges
-	return container.NewPadded(tree)
+	// Replace the content with the new list
+	innerContainer.Objects = []fyne.CanvasObject{notesList}
+	innerContainer.Refresh()
 }
 
 // createSidebarTree creates a tree widget from the sidebar sections.

@@ -3,6 +3,8 @@
 package components
 
 import (
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -31,6 +33,23 @@ type NotePadData struct {
 	ReverseEngType string
 }
 
+// NotePadComponents groups all the interactive components of the notepad
+// This makes it easier to access them for setting and getting data
+type NotePadComponents struct {
+	TitleEntry        *widget.Entry
+	ContentEntry      *widget.Entry
+	TagsEntry         *widget.Entry
+	NoteTypeSelect    *widget.Select
+	BinaryNameEntry   *widget.Entry
+	AddressRangeEntry *widget.Entry
+	FunctionRefsEntry *widget.Entry
+	Tabs              *container.AppTabs
+}
+
+// Global reference to the current notepad components
+// This approach avoids the need to store components in the container
+var currentComponents *NotePadComponents
+
 // NewNotePad creates a new notepad component for editing and viewing notes.
 // The notepad provides:
 // - A title field for naming the note
@@ -40,86 +59,89 @@ type NotePadData struct {
 //
 // Returns a canvas object that can be placed in a container.
 func NewNotePad() fyne.CanvasObject {
+	components := &NotePadComponents{}
+	currentComponents = components // Store the reference globally
+
 	// Create the title entry field for the note's name
-	// This field is prominent at the top of the notepad
-	titleEntry := widget.NewEntry()
-	titleEntry.SetPlaceHolder("Note Title")
+	components.TitleEntry = widget.NewEntry()
+	components.TitleEntry.SetPlaceHolder("Note Title")
 
 	// Create the main content entry field for the note's body
-	// This is a multi-line text area where the primary note content is written
-	contentEntry := widget.NewMultiLineEntry()
-	contentEntry.SetPlaceHolder("Write your analysis notes here...")
-	contentEntry.SetMinRowsVisible(20) // Set a comfortable height for writing
+	components.ContentEntry = widget.NewMultiLineEntry()
+	components.ContentEntry.SetPlaceHolder("Write your analysis notes here...")
+	components.ContentEntry.SetMinRowsVisible(20) // Set a comfortable height for writing
 
 	// Create the tags entry field for categorizing the note
-	// Tags help with organization and searching for notes later
-	tagsEntry := widget.NewEntry()
-	tagsEntry.SetPlaceHolder("Tags (comma separated)")
+	components.TagsEntry = widget.NewEntry()
+	components.TagsEntry.SetPlaceHolder("Tags (comma separated)")
 
-	// Create a label for the tags field to clearly identify its purpose
+	// Create a label for the tags field
 	tagsLabel := widget.NewLabel("Tags:")
 
 	// Create RE-specific fields
 	// Note type selector
-	noteTypeSelect := widget.NewSelect([]string{
+	components.NoteTypeSelect = widget.NewSelect([]string{
 		models.RETypeGeneral,
 		models.RETypeFunctionAnalysis,
 		models.RETypeStructureAnalysis,
 		models.RETypeProtocolAnalysis,
 		models.RETypeVulnerability,
 	}, nil)
-	noteTypeSelect.SetSelected(models.RETypeGeneral)
+	components.NoteTypeSelect.SetSelected(models.RETypeGeneral)
 
 	// Binary name entry
-	binaryNameEntry := widget.NewEntry()
-	binaryNameEntry.SetPlaceHolder("Binary Name (optional)")
+	components.BinaryNameEntry = widget.NewEntry()
+	components.BinaryNameEntry.SetPlaceHolder("Binary Name (optional)")
 
 	// Address range entry
-	addressRangeEntry := widget.NewEntry()
-	addressRangeEntry.SetPlaceHolder("Address Range (e.g., 0x1000-0x2000)")
+	components.AddressRangeEntry = widget.NewEntry()
+	components.AddressRangeEntry.SetPlaceHolder("Address Range (e.g., 0x1000-0x2000)")
 
 	// Function references entry
-	functionRefsEntry := widget.NewMultiLineEntry()
-	functionRefsEntry.SetPlaceHolder("Function references (one per line)")
-	functionRefsEntry.SetMinRowsVisible(3)
+	components.FunctionRefsEntry = widget.NewMultiLineEntry()
+	components.FunctionRefsEntry.SetPlaceHolder("Function references (one per line)")
+	components.FunctionRefsEntry.SetMinRowsVisible(3)
 
 	// Arrange the tags label and entry field in a horizontal layout
-	tagsContainer := container.NewBorder(nil, nil, tagsLabel, nil, tagsEntry)
+	tagsContainer := container.NewBorder(nil, nil, tagsLabel, nil, components.TagsEntry)
 
 	// Create container for RE-specific fields
 	reFieldsContainer := container.NewVBox(
 		widget.NewLabel("Note Type:"),
-		noteTypeSelect,
+		components.NoteTypeSelect,
 		widget.NewLabel("Binary Name:"),
-		binaryNameEntry,
+		components.BinaryNameEntry,
 		widget.NewLabel("Address Range:"),
-		addressRangeEntry,
+		components.AddressRangeEntry,
 		widget.NewLabel("Function References:"),
-		functionRefsEntry,
+		components.FunctionRefsEntry,
 	)
 
 	// Create tabs for regular note fields and RE-specific fields
-	tabs := container.NewAppTabs(
+	components.Tabs = container.NewAppTabs(
 		container.NewTabItem("Basic Info", container.NewVBox(
-			titleEntry,
+			components.TitleEntry,
 			tagsContainer,
 		)),
 		container.NewTabItem("RE Details", reFieldsContainer),
 	)
 
 	// Create the overall notepad layout
-	// This places the title at the top, content in the center, and tags at the bottom
 	noteContainer := container.NewBorder(
-		tabs,         // Top component (tabs)
-		nil,          // No bottom component
-		nil,          // No left component
-		nil,          // No right component
-		contentEntry, // Content in the center (the largest area)
+		components.Tabs,         // Top component (tabs)
+		nil,                     // No bottom component
+		nil,                     // No left component
+		nil,                     // No right component
+		components.ContentEntry, // Content in the center (the largest area)
 	)
 
 	// Add padding around the notepad for visual comfort
-	// This creates space between the notepad elements and the container edges
 	return container.NewPadded(noteContainer)
+}
+
+// getComponents returns the current components
+func getComponents() *NotePadComponents {
+	return currentComponents
 }
 
 // LoadNoteData loads data into the notepad component.
@@ -130,7 +152,18 @@ func NewNotePad() fyne.CanvasObject {
 //   - notepad: The notepad container to load data into
 //   - data: The note data to load
 func LoadNoteData(notepad *fyne.Container, data NotePadData) {
-	// Implementation to be completed
+	components := getComponents()
+
+	// Set basic note data
+	components.TitleEntry.SetText(data.Title)
+	components.ContentEntry.SetText(data.Content)
+	components.TagsEntry.SetText(strings.Join(data.Tags, ", "))
+
+	// Set RE-specific data
+	components.NoteTypeSelect.SetSelected(data.ReverseEngType)
+	components.BinaryNameEntry.SetText(data.BinaryName)
+	components.AddressRangeEntry.SetText(data.AddressRange)
+	components.FunctionRefsEntry.SetText(strings.Join(data.FunctionRefs, "\n"))
 }
 
 // GetNoteData retrieves data from the notepad component.
@@ -143,8 +176,55 @@ func LoadNoteData(notepad *fyne.Container, data NotePadData) {
 // Returns:
 //   - The note data extracted from the notepad
 func GetNoteData(notepad *fyne.Container) NotePadData {
-	// Implementation to be completed
-	return NotePadData{}
+	components := getComponents()
+
+	// Extract tags from comma-separated list
+	tags := []string{}
+	if components.TagsEntry.Text != "" {
+		for _, tag := range strings.Split(components.TagsEntry.Text, ",") {
+			tags = append(tags, strings.TrimSpace(tag))
+		}
+	}
+
+	// Extract function references from newline-separated list
+	functionRefs := []string{}
+	if components.FunctionRefsEntry.Text != "" {
+		for _, ref := range strings.Split(components.FunctionRefsEntry.Text, "\n") {
+			if trimmed := strings.TrimSpace(ref); trimmed != "" {
+				functionRefs = append(functionRefs, trimmed)
+			}
+		}
+	}
+
+	// Compile the data
+	return NotePadData{
+		Title:          components.TitleEntry.Text,
+		Content:        components.ContentEntry.Text,
+		Tags:           tags,
+		BinaryName:     components.BinaryNameEntry.Text,
+		FunctionRefs:   functionRefs,
+		AddressRange:   components.AddressRangeEntry.Text,
+		ReverseEngType: components.NoteTypeSelect.Selected,
+	}
+}
+
+// ClearNotepad resets all fields in the notepad
+func ClearNotepad(notepad *fyne.Container) {
+	components := getComponents()
+
+	// Clear basic note data
+	components.TitleEntry.SetText("")
+	components.ContentEntry.SetText("")
+	components.TagsEntry.SetText("")
+
+	// Clear RE-specific data
+	components.NoteTypeSelect.SetSelected(models.RETypeGeneral)
+	components.BinaryNameEntry.SetText("")
+	components.AddressRangeEntry.SetText("")
+	components.FunctionRefsEntry.SetText("")
+
+	// Reset to first tab
+	components.Tabs.SelectIndex(0)
 }
 
 // ConvertToNote converts NotePadData to a models.Note.
